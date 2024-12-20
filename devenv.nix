@@ -9,6 +9,7 @@
   packages = [
     pkgs.jujutsu
     pkgs.asciidoctor-with-extensions
+    pkgs.antora
   ];
 
   languages.python = {
