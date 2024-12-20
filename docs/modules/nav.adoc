@@ -1,0 +1,6 @@
+.API Reference
+* Modules
+** xref:api:pysciidoc.generate.adoc[generate]
+** xref:api:pysciidoc.main.adoc[main]
+** xref:api:pysciidoc.objectdoc.adoc[objectdoc]
+** xref:api:pysciidoc.python_type_formatters.adoc[python_type_formatters]

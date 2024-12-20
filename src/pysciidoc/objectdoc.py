@@ -175,7 +175,7 @@ class _ObjectDocBuilder:
 
     def _process_class_children(self, symbol: type) -> None:
         for name, obj in vars(symbol).items():
-            if _insp.isroutine(obj):
+            if _insp.isroutine(obj) and not self._is_private(name):
                 self._children.append(self.build(obj))
 
     def _process_routine_children(self, routine) -> None:

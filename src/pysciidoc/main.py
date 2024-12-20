@@ -1,5 +1,5 @@
 from .objectdoc import ObjectDoc
-from .generate import generate_ascii_doc
+from .generate import generate_ascii_doc, generate_module_crossrefs
 import click
 from collections.abc import Iterable, Iterator
 from types import ModuleType
@@ -35,6 +35,7 @@ def discover_package_modules(package_name: str) -> Iterator[ModuleType]:
 
 def generate_documentation(docs: Iterable[ObjectDoc], output_dir: Path) -> None:
     """Generate and write AsciiDoc documentation."""
+    output_dir.mkdir()
     for doc in docs:
         for filename, txt in generate_ascii_doc(doc):
             filename = f"{filename}.adoc"
@@ -43,18 +44,34 @@ def generate_documentation(docs: Iterable[ObjectDoc], output_dir: Path) -> None:
                 click.echo(txt, file=f)
 
 
+def generate_navigation(docs: Iterable[ObjectDoc], out_file: Path) -> None:
+    with open(out_file, "w") as f:
+
+        def write(txt: str) -> None:
+            click.echo(txt, file=f)
+
+        write(".API Reference")
+        write("* Modules")
+        for line in generate_module_crossrefs(docs):
+            write(f"** {line}")
+
+
 @click.command()
 @click.argument("package_name")
 @click.option(
-    "--output",
-    "-o",
+    "--api-output-dir",
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default="pysciidocs",
-    help="Output directory (default: pysciidocs)",
+    default="docs/modules/api/pages",
+    help="Output directory of generated api adoc files (default: docs/modules/api/pages)",
 )
-@click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
-def main(package_name: str, output: Path, verbose: bool) -> None:
-    """Generate AsciiDoc documentation for a Python package.
+@click.option(
+    "--nav-file",
+    type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
+    default="docs/modules/api/nav.adoc",
+    help="output file for navigation file (default: docs/module/api/nav.adoc)",
+)
+def main(package_name: str, api_output_dir: Path, nav_file: Path) -> None:
+    """Generate AsciiDoc API documentation for a Python package.
 
     PACKAGE_NAME: The name of the package to document
     """
@@ -62,7 +79,8 @@ def main(package_name: str, output: Path, verbose: bool) -> None:
     docs = []
     for m in modules:
         docs.append(ObjectDoc.from_symbol(m))
-    generate_documentation(docs, output)
+    generate_documentation(docs, api_output_dir)
+    generate_navigation(docs, nav_file)
 
 
 if __name__ == "__main__":

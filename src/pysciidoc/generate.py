@@ -1,5 +1,5 @@
 from .objectdoc import ObjectDoc
-from typing import Iterator
+from typing import Iterator, Iterable
 from string import Template
 
 
@@ -29,9 +29,6 @@ class AsciiDocGenerator:
 
     def _build_basic_template(self) -> Template:
         return Template("""$define_id
-ifndef::toc[]
-$toc
-endif::[]
 
 [id={$id_name}]
 == $title
@@ -85,12 +82,7 @@ endif::[]
     def _get_title(self) -> str:
         name = self.current_doc.name
         kind = self.current_doc.kind
-        definitions = {
-            "module": name,
-            "class": f"*_class_* {name}",
-            "function": f"+{name}+",
-        }
-        return definitions.get(kind, "")
+        return f"*_{kind}_* +{name}+"
 
     def _get_signature(self) -> str:
         if self.current_doc.signature == "":
@@ -129,3 +121,27 @@ def generate_ascii_doc(d: ObjectDoc) -> Iterator[tuple[str, str]]:
         yield d.qualified_name, generator.generate(d)
 
     yield from generate(d)
+
+
+def generate_module_crossrefs(
+    docs: Iterable[ObjectDoc], prefix: str = "api"
+) -> list[str]:
+    def collect_all_modules(doc: ObjectDoc) -> Iterator[ObjectDoc]:
+        if doc.kind == "module":
+            yield doc
+        for child in doc.children:
+            yield from collect_all_modules(child)
+
+    def collect_all_modules_from_docs(docs: Iterable[ObjectDoc]) -> Iterator[ObjectDoc]:
+        for d in docs:
+            yield from collect_all_modules(d)
+
+    def name_qual_name_pairs(docs: Iterable[ObjectDoc]) -> Iterator[tuple[str, str]]:
+        for d in docs:
+            yield d.name, d.qualified_name
+
+    modules = name_qual_name_pairs(collect_all_modules_from_docs(docs))
+    crossrefs = []
+    for name, qualified_name in modules:
+        crossrefs.append(f"xref:api:{qualified_name}.adoc[{name}]")
+    return crossrefs
