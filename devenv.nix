@@ -9,6 +9,7 @@
   packages = [
     pkgs.jujutsu
     pkgs.antora
+    pkgs.kramdown-asciidoc
   ];
 
   languages.python = {
@@ -42,6 +43,7 @@
        pkg_name = "pysciidoc";
      in {
       exec = ''
+        ${pkgs.kramdown-asciidoc}/bin/kramdoc README.md -o docs/modules/ROOT/pages/jjreadme.adoc
         ${pkgs.uv}/bin/uv run pysciidoc --api-output-dir ${out_dir} --nav-file ${nav_file} ${pkg_name}
         ${pkgs.antora}/bin/antora docs/antora-playbook.yml
       '';
@@ -62,7 +64,7 @@
       nav_file = "docs/modules/nav.adoc";
     in
       {
-        
+
       exec = ''
         if [ -d ${out_dir} ]; then
           rm -r ${out_dir}
