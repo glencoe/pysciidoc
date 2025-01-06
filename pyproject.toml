@@ -1,7 +1,7 @@
 [project]
 name = "pysciidoc"
 version = "0.1.0"
-description = ""
+description = "autogenerate asciidoc api documenation from docstrings"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["click>=8.1.7"]
