@@ -4,9 +4,7 @@ version = "0.1.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-    "click>=8.1.7",
-]
+dependencies = ["click>=8.1.7"]
 
 [project.scripts]
 pysciidoc = "pysciidoc.main:main"
@@ -15,36 +13,35 @@ pysciidoc = "pysciidoc.main:main"
 include = ["pyproject.toml", "src/**/*.py", "src/**/*.pyi", "testing/**/*.py"]
 
 
-
 # Exclude a variety of commonly ignored directories.
 exclude = [
-  ".bzr",
-  ".direnv",
-  ".eggs",
-  ".git",
-  ".git-rewrite",
-  ".hg",
-  ".ipynb_checkpoints",
-  ".mypy_cache",
-  ".nox",
-  ".pants.d",
-  ".pyenv",
-  ".pytest_cache",
-  ".pytype",
-  ".ruff_cache",
-  ".svn",
-  ".tox",
-  ".venv",
-  ".vscode",
-  "__pypackages__",
-  "_build",
-  "buck-out",
-  "build",
-  "dist",
-  "node_modules",
-  "site-packages",
-  "venv",
-  ".devenv",
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    ".devenv",
 ]
 
 
@@ -103,14 +100,8 @@ dev = [
     "ruff>=0.8.3",
     "towncrier>=24.8.0",
 ]
-lint = [
-    "ruff>=0.8.3",
-]
-lsp = [
-    "pylsp-mypy>=0.6.9",
-    "pylsp-rope>=0.1.17",
-    "python-lsp-server>=1.12.0",
-]
+lint = ["ruff>=0.8.3"]
+lsp = ["pylsp-mypy>=0.6.9", "pylsp-rope>=0.1.17", "python-lsp-server>=1.12.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pysciidoc"]
@@ -120,7 +111,6 @@ packages = ["src/pysciidoc"]
 omit = ["testing/**/*.py"]
 source = ["src/pysciidoc"]
 command_line = "-m pytest"
-
 
 
 [tool.towncrier]

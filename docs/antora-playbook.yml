@@ -1,11 +1,11 @@
 site:
   title: pysciidoc Documentation
-  start_page: pysciidoc::index.adoc
+  start_page: pysciidoc::readme.adoc
 content:
   sources:
-  - url: ./../
-    branch: HEAD
-    start_path: docs
+    - url: ./../
+      branch: HEAD
+      start_path: docs
 ui:
   bundle:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
