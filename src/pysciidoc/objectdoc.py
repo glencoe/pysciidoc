@@ -82,9 +82,7 @@ class _ObjectDocBuilder:
 
     def _process_symbol(self, symbol: Any) -> ObjectDoc:
         def is_user_routine(s: Any) -> bool:
-            return _insp.isroutine(s) and not (
-                _insp.isbuiltin(s) or _insp.ismethodwrapper(s)
-            )
+            return _insp.isroutine(s) and not hasattr(s, "__module__")
 
         process_children = _dispatching_fn(
             (self._process_routine_children, is_user_routine),

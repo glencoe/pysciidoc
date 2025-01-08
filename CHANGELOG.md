@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.0] - 2025-01-08
+## [0.3.0] - 2025-01-08
 
 ### 🚀 Features
 
@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file.
 ### 🐛 Bug Fixes
 
 - Ignore builtin routines, e.g. __str__
+- Restrict python version to >3.11
+- Assume routines are not user defined if they lack __module__
 
 ### 📚 Documentation
 
