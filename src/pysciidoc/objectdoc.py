@@ -81,8 +81,13 @@ class _ObjectDocBuilder:
         self._children: list[ObjectDoc] = []
 
     def _process_symbol(self, symbol: Any) -> ObjectDoc:
+        def is_user_routine(s: Any) -> bool:
+            return _insp.isroutine(s) and not (
+                _insp.isbuiltin(s) or _insp.ismethodwrapper(s)
+            )
+
         process_children = _dispatching_fn(
-            (self._process_routine_children, _insp.isroutine),
+            (self._process_routine_children, is_user_routine),
             (self._process_module_children, _insp.ismodule),
             (self._process_class_children, _insp.isclass),
         )
@@ -90,7 +95,7 @@ class _ObjectDocBuilder:
         process = _dispatching_fn(
             (self._process_class, _insp.isclass),
             (self._process_module, _insp.ismodule),
-            (self._process_routine, _insp.isroutine),
+            (self._process_routine, is_user_routine),
         )
         return process(symbol)
 
