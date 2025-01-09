@@ -56,8 +56,9 @@ $children
     def _determine_children(self) -> Template:
         children: list[str] = []
         for child in self.current_doc.children:
-            child_generator = AsciiDocGenerator()
-            children.append(child_generator.generate(child, self.package_name))
+            if child is not None:
+                child_generator = AsciiDocGenerator()
+                children.append(child_generator.generate(child, self.package_name))
         return Template("\n".join(children))
 
     def _define_id(self) -> str:
@@ -176,10 +177,6 @@ def generate_module_crossrefs(
     def collect_all_modules_from_docs(docs: Iterable[ObjectDoc]) -> Iterator[ObjectDoc]:
         for d in docs:
             yield from collect_all_modules(d)
-
-    def name_qual_name_pairs(docs: Iterable[ObjectDoc]) -> Iterator[tuple[str, str]]:
-        for d in docs:
-            yield d.name, d.qualified_name
         
     tree: dict = {}
 

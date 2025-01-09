@@ -95,6 +95,7 @@ class _ObjectDocBuilder:
             (self._process_class, _insp.isclass),
             (self._process_module, _insp.ismodule),
             (self._process_routine, self._is_valid_routine),
+            (lambda x: None, lambda x: True),
         )
         return process(symbol)
 

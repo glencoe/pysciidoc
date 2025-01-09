@@ -45,12 +45,12 @@ def generate_documentation(docs: Iterable[ObjectDoc], output_dir: Path, package_
 
 
 def generate_navigation(docs: Iterable[ObjectDoc], out_file: Path, package_name) -> None:
+    out_file.parent.mkdir(exist_ok=True, parents=True)
     with open(out_file, "w") as f:
 
         def write(txt: str) -> None:
             click.echo(txt, file=f)
 
-        write(".API Reference")
         for line, level in generate_module_crossrefs(docs, package_name):
             write(f"*{'*'*level} {line}")
 
