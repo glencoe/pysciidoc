@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2025-01-09
+
+### 🐛 Bug Fixes
+
+- Do not mention inheritance from builtin functions
+
+### 💼 Other
+
+- Use dynamic version tag via hatch-vcs
+
 ## [0.3.0] - 2025-01-09
 
 ### 🚀 Features

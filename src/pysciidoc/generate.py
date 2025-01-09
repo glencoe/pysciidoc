@@ -130,7 +130,8 @@ endif::[]
         if self.current_doc.kind == "function":
             module, name = self.current_doc.inherited_from[0]
             base = get_xref_if_possible(module, name)
-            return f"Inherited from {base}"
+            if not base.startswith("builtins"):
+                return f"Inherited from {base}"
         return ""
 
     def generate(self, d: ObjectDoc, package_name) -> str:
