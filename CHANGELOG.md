@@ -2,7 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.3.0] - 2025-01-08
+## [0.3.0] - 2025-01-09
+
+### 🚀 Features
+
+- Autolink to classes inside project and show inherited classes
+
+### 📚 Documentation
+
+- Use version from git tag
+
+### ⚙️ Miscellaneous Tasks
+
+- Fix download for package signing step
+
+## [0.2.1] - 2025-01-08
 
 ### 🚀 Features
 

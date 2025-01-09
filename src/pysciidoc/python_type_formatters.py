@@ -14,9 +14,9 @@ class SignatureFormatter:
             if annotation == param.empty:
                 annotation = ""
             elif isinstance(annotation, type):
-                annotation = f": {annotation.__name__}"
+                annotation = f": {annotation.__name__.split('.')[-1]}"
             else:
-                annotation = f": {annotation}"
+                annotation = f": {str(annotation).split('.')[-1]}"
 
             default = param.default
             if default == param.empty:
@@ -30,9 +30,9 @@ class SignatureFormatter:
 
         if s.return_annotation != s.empty:
             if isinstance(s.return_annotation, type):
-                result.append(f") -> {s.return_annotation.__name__}")
+                result.append(f") -> {s.return_annotation.__name__.split('.')[-1]}")
             else:
-                result.append(f") -> {s.return_annotation}")
+                result.append(f") -> {str(s.return_annotation).split('.')[-1]}")
         else:
             result.append(")")
         oneline = "".join(result[0:2])

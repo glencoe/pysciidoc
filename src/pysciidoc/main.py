@@ -33,27 +33,26 @@ def discover_package_modules(package_name: str) -> Iterator[ModuleType]:
     return map(import_module, names)
 
 
-def generate_documentation(docs: Iterable[ObjectDoc], output_dir: Path) -> None:
+def generate_documentation(docs: Iterable[ObjectDoc], output_dir: Path, package_name: str) -> None:
     """Generate and write AsciiDoc documentation."""
-    output_dir.mkdir()
+    output_dir.mkdir(exist_ok=True, parents=True)
     for doc in docs:
-        for filename, txt in generate_ascii_doc(doc):
+        for filename, txt in generate_ascii_doc(doc, package_name):
             filename = f"{filename}.adoc"
 
             with open(output_dir / filename, "w") as f:
                 click.echo(txt, file=f)
 
 
-def generate_navigation(docs: Iterable[ObjectDoc], out_file: Path) -> None:
+def generate_navigation(docs: Iterable[ObjectDoc], out_file: Path, package_name) -> None:
     with open(out_file, "w") as f:
 
         def write(txt: str) -> None:
             click.echo(txt, file=f)
 
         write(".API Reference")
-        write("* Modules")
-        for line in generate_module_crossrefs(docs):
-            write(f"** {line}")
+        for line, level in generate_module_crossrefs(docs, package_name):
+            write(f"*{'*'*level} {line}")
 
 
 @click.command()
@@ -79,8 +78,8 @@ def main(package_name: str, api_output_dir: Path, nav_file: Path) -> None:
     docs = []
     for m in modules:
         docs.append(ObjectDoc.from_symbol(m))
-    generate_documentation(docs, api_output_dir)
-    generate_navigation(docs, nav_file)
+    generate_documentation(docs, api_output_dir, package_name)
+    generate_navigation(docs, nav_file, package_name)
 
 
 if __name__ == "__main__":

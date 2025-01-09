@@ -4,7 +4,7 @@ import inspect as _insp
 from dataclasses import dataclass, field
 from typing import Literal, Any
 from types import ModuleType, MethodType, FunctionType
-from ._functools import curry_or as _curry_or, dispatching_fn as _dispatching_fn
+from ._functools import dispatching_fn as _dispatching_fn
 from .python_type_formatters import SignatureFormatter
 
 
@@ -58,12 +58,14 @@ class ObjectDoc:
 
     kind: Literal["function", "class", "module"]
     qualified_name: str
+    module: str
     short_descr: str
     long_descr: str
     signature: str
     examples: str
     args: dict[str, str]
     returns: str
+    inherited_from: list[tuple[str, str]] = field(default_factory=list)
     children: list["ObjectDoc"] = field(default_factory=list)
 
     @property
@@ -81,24 +83,42 @@ class _ObjectDocBuilder:
         self._children: list[ObjectDoc] = []
 
     def _process_symbol(self, symbol: Any) -> ObjectDoc:
-        def is_user_routine(s: Any) -> bool:
-            return _insp.isroutine(s) and not hasattr(s, "__module__")
 
         process_children = _dispatching_fn(
-            (self._process_routine_children, is_user_routine),
+            (self._process_routine_children, self._is_valid_routine),
             (self._process_module_children, _insp.ismodule),
             (self._process_class_children, _insp.isclass),
+            (lambda x: None, lambda x: True),
         )
         process_children(symbol)
         process = _dispatching_fn(
             (self._process_class, _insp.isclass),
             (self._process_module, _insp.ismodule),
-            (self._process_routine, is_user_routine),
+            (self._process_routine, self._is_valid_routine),
         )
         return process(symbol)
 
+    @staticmethod
+    def _find_first_base_class_that_defines_method(_cls: type, method_name: str) ->  type | None:
+        for base in _insp.getmro(_cls):
+            if hasattr(base, method_name):
+                return base
+        return None
+    
+    @staticmethod
+    def _docstring_is_inherited(symbol: Any, docstring: str) -> bool:
+        if symbol.__doc__ is None and docstring is not None:
+            return True
+        return False
+
+    def _handle_inherited_docstring(self, symbol: Any, docstring: str) -> str:
+        if self._docstring_is_inherited(symbol, docstring):
+            return ""
+        return docstring
+
     def _set_txt(self, symbol):
         text = _insp.getdoc(symbol)
+        text = self._handle_inherited_docstring(symbol, text)
         if text is None:
             text = ""
         self._txt = text.splitlines()
@@ -117,22 +137,18 @@ class _ObjectDocBuilder:
         return _dispatching_fn(
             (
                 self._get_routine_signature,
-                _curry_or(_insp.isroutine, _insp.isclass),
+                self._is_valid_routine,
             ),
-            (self._get_module_signature, _insp.ismodule),
+            (lambda x: "", lambda x: True),
         )(symbol)
 
     def _get_routine_signature(self, routine) -> str:
         return SignatureFormatter().format(_insp.signature(routine))
 
-    def _get_module_signature(self, module) -> str:
-        return ""
-
-    @staticmethod
-    def _get_defined_names(cls_: type) -> set[str]:
+    def _get_defined_names(self, cls_: type) -> set[str]:
         names = set()
         for name, obj in vars(cls_).items():
-            if _insp.isroutine(obj):
+            if self._is_valid_routine(obj):
                 names.add(name)
         return names
 
@@ -145,27 +161,23 @@ class _ObjectDocBuilder:
         return name.startswith("_") and not _ObjectDocBuilder._is_magic(name)
 
     @staticmethod
-    def _has_docs(symbol) -> bool:
-        docs = _insp.getdoc(symbol)
-        return docs is not None and docs != ""
-
-    def _filter_relevant_children(
-        self,
-        pairs: tuple[
-            tuple[str, Any],
-            ...,
-        ],
-    ):
-        for name, obj in pairs:
-            if not self._is_private(name):
-                yield name, obj
-
-    @staticmethod
-    def _symbol_is_defined_in_module(module: ModuleType, symbol: Any) -> bool:
+    def _symbol_is_defined_in_module(module: ModuleType| str, symbol: Any) -> bool:
+        if isinstance(module, str):
+            module_name = module
+        else:
+            module_name = module.__name__
         if hasattr(symbol, "__module__"):
-            return module.__name__ == symbol.__module__  # type: ignore
+            return module_name == symbol.__module__  # type: ignore
         else:
             return False
+
+    @classmethod
+    def _is_valid_routine(cls, obj: Any) -> bool:
+        return (
+            _insp.isfunction(obj) and hasattr(obj, "__module__") and hasattr(obj, "__name__")
+            and not cls._is_private(obj.__name__) 
+            and cls._symbol_is_defined_in_module(obj.__module__, obj)
+        )
 
     def _process_module_children(self, symbol: ModuleType) -> None:
         for name, obj in vars(symbol).items():
@@ -178,16 +190,22 @@ class _ObjectDocBuilder:
 
     def _process_class_children(self, symbol: type) -> None:
         for name, obj in vars(symbol).items():
-            if _insp.isroutine(obj) and not self._is_private(name):
+            if self._is_valid_routine(obj):
                 self._children.append(self.build(obj))
 
     def _process_routine_children(self, routine) -> None:
         self._children.clear()
 
     def _process_routine(self, symbol: MethodType | FunctionType) -> ObjectDoc:
+        inherited_from = []
+        base = _ObjectDocBuilder._find_first_base_class_that_defines_method(symbol.__class__, symbol.__name__)
+        if base is not None and base is not object:
+            inherited_from.append((base.__module__, base.__name__))
+
         return ObjectDoc(
             kind="function",
             qualified_name=f"{symbol.__module__}.{symbol.__qualname__}",
+            module=symbol.__module__,
             signature=self._get_signature(symbol),
             short_descr=self._get_short_descr(),
             long_descr=self._get_long_descr(),
@@ -195,6 +213,7 @@ class _ObjectDocBuilder:
             args=dict(),
             returns="",
             children=self._children,
+            inherited_from=inherited_from,
         )
 
     def _process_module(self, symbol: ModuleType) -> ObjectDoc:
@@ -203,24 +222,32 @@ class _ObjectDocBuilder:
             qualified_name=symbol.__name__,
             short_descr=self._get_short_descr(),
             long_descr=self._get_long_descr(),
+            module=symbol.__name__,
             signature="",
             examples="",
             args=dict(),
             returns="",
             children=self._children,
+            inherited_from=[],
         )
 
     def _process_class(self, symbol: type) -> ObjectDoc:
+        inherited_from = []
+        for base in symbol.__bases__:
+            if base is not object:
+                inherited_from.append((base.__module__, base.__name__))
         return ObjectDoc(
             kind="class",
             qualified_name=f"{symbol.__module__}.{symbol.__qualname__}",
             short_descr=self._get_short_descr(),
             long_descr=self._get_long_descr(),
             signature=self._get_signature(symbol),
+            module=symbol.__module__,
             examples="",
             args=dict(),
             returns="",
             children=self._children,
+            inherited_from=inherited_from,
         )
 
     def __call__(self, symbol: Any) -> ObjectDoc:

@@ -1,10 +1,11 @@
 from .objectdoc import ObjectDoc
 from typing import Iterator, Iterable
 from string import Template
-
+import logging
 
 class AsciiDocGenerator:
     def __init__(self) -> None:
+        self._logger = logging.getLogger(__name__)
         self.toc_position = "left"
         self.current_doc = ObjectDoc(
             kind="function",
@@ -15,6 +16,7 @@ class AsciiDocGenerator:
             examples="",
             args=dict(),
             returns="",
+            module="",
         )
 
     def _toc(self) -> str:
@@ -22,19 +24,25 @@ class AsciiDocGenerator:
 :toclevels: $toc_levels
 """).substitute(toc_position=self.toc_position, toc_levels=3)
 
+    @staticmethod
+    def _escape_dollars(s: str) -> str:
+        return s.replace("$", "$$")
+
     def _short_descr(self) -> str:
         if self.current_doc.short_descr not in (None, ""):
-            return f"[.lead]\n{self.current_doc.short_descr}"
+            return f"[.lead]\n{self._escape_dollars(self.current_doc.short_descr)}"
         return ""
 
     def _build_basic_template(self) -> Template:
         return Template("""$define_id
 
 [id={$id_name}]
-== $title
+= $title
 $short_descr
 
 $signature
+
+$inheritance
 
 $long_descr
 
@@ -48,7 +56,8 @@ $children
     def _determine_children(self) -> Template:
         children: list[str] = []
         for child in self.current_doc.children:
-            children.append(f"include::{{$id_name}}.{child.name}.adoc[]")
+            child_generator = AsciiDocGenerator()
+            children.append(child_generator.generate(child, self.package_name))
         return Template("\n".join(children))
 
     def _define_id(self) -> str:
@@ -94,8 +103,40 @@ endif::[]
 ----
 """.format(signature=self.current_doc.signature, name=self.current_doc.name)
 
-    def generate(self, d: ObjectDoc) -> str:
+    def _get_long_descr(self) -> str:
+        return self._escape_dollars(self.current_doc.long_descr)
+
+    def _get_inheritance(self) -> str:
+        if len(self.current_doc.inherited_from) == 0:
+            return ""
+
+        def contains_private_namespace(s: str) -> bool:
+            for part in s.split("."):
+                if part.startswith("_"):
+                    return True
+            return False
+
+        def get_xref_if_possible(base_module: str, base_name: str) -> str:
+            if base_module.startswith(self.package_name) and not contains_private_namespace(f"{base_module}.{base_name}"):
+                return f"xref::{base_module}.adoc#{base_module}.{base_name}[{base_name}]"
+            return f"{base_module}.{base_name}"
+
+        if self.current_doc.kind == "class":
+            bases = [".Base classes"]
+            for module, name in self.current_doc.inherited_from:
+                base = get_xref_if_possible(module, name)
+                bases.append(f"* {base}")
+            return "\n".join(bases)
+        if self.current_doc.kind == "function":
+            module, name = self.current_doc.inherited_from[0]
+            base = get_xref_if_possible(module, name)
+            return f"Inherited from {base}"
+        return ""
+
+    def generate(self, d: ObjectDoc, package_name) -> str:
+        logging.debug(f"Generating doc for {d.qualified_name}")
         self.current_doc = d
+        self.package_name = package_name
         children = self._determine_children().substitute(id_name=d.kind)
         template = self._build_basic_template()
         return template.substitute(
@@ -105,27 +146,26 @@ endif::[]
             toc=self._toc(),
             short_descr=self._short_descr(),
             signature=self._get_signature(),
-            long_descr=d.long_descr,
+            long_descr=self._get_long_descr(),
+            inheritance=self._get_inheritance(),
             children=children,
         )
 
 
-def generate_ascii_doc(d: ObjectDoc) -> Iterator[tuple[str, str]]:
+def generate_ascii_doc(d: ObjectDoc, package_name: str) -> Iterator[tuple[str, str]]:
     """Generate formatted asciidoc content from a given `ObjectDoc` item."""
 
     generator = AsciiDocGenerator()
 
-    def generate(d: ObjectDoc):
-        for child in d.children:
-            yield from generate(child)
-        yield d.qualified_name, generator.generate(d)
+    yield d.qualified_name, generator.generate(d, package_name=package_name)
 
-    yield from generate(d)
 
 
 def generate_module_crossrefs(
-    docs: Iterable[ObjectDoc], prefix: str = "api"
-) -> list[str]:
+    docs: Iterable[ObjectDoc], package_name: str, prefix: str = "api"
+) -> list[tuple[str, int]]:
+    logger = logging.getLogger(__name__)
+
     def collect_all_modules(doc: ObjectDoc) -> Iterator[ObjectDoc]:
         if doc.kind == "module":
             yield doc
@@ -139,9 +179,33 @@ def generate_module_crossrefs(
     def name_qual_name_pairs(docs: Iterable[ObjectDoc]) -> Iterator[tuple[str, str]]:
         for d in docs:
             yield d.name, d.qualified_name
+        
+    tree: dict = {}
 
-    modules = name_qual_name_pairs(collect_all_modules_from_docs(docs))
+    def add_module_path(module_path: list[str], tree: dict) -> None:
+        if len(module_path) == 0:
+            tree["."] = None
+            return
+        tree[module_path[0]] = tree.get(module_path[0], {})
+        add_module_path(module_path[1:], tree[module_path[0]])
+
+    
+    for qualname in (m.qualified_name for m in docs):
+        qualname = qualname.removeprefix(f"{package_name}.")
+        logger.debug(f"Adding module path {qualname}")
+
+        module_path = qualname.split(".")
+        add_module_path(module_path, tree)
+            
+    def produce_crossrefs(tree: dict, path: list[str], level: int) -> Iterator[tuple[str, int]]:
+        for key in tree:
+            if key == ".":
+                yield ".".join(path), level
+            else:
+                yield from produce_crossrefs(tree[key], path + [key], level + 1)
+
+
     crossrefs = []
-    for name, qualified_name in modules:
-        crossrefs.append(f"xref:api:{qualified_name}.adoc[{name}]")
+    for name, level in produce_crossrefs(tree, [], 0):
+        crossrefs.append((f"xref:api:{package_name}.{name}.adoc[{name}]", level))
     return crossrefs
