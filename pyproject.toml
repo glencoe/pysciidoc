@@ -1,10 +1,10 @@
 [project]
 name = "pysciidoc"
-version = "0.3.0"
 description = "autogenerate asciidoc api documenation from docstrings"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["click>=8.1.7"]
+dynamic = ["version"]
 
 [project.scripts]
 pysciidoc = "pysciidoc.main:main"
@@ -86,7 +86,7 @@ python_files = ["*_test.py", "test_*.py"]
 
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
@@ -102,6 +102,9 @@ dev = [
 ]
 lint = ["ruff>=0.8.3"]
 lsp = ["pylsp-mypy>=0.6.9", "pylsp-rope>=0.1.17", "python-lsp-server>=1.12.0"]
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 package = ["src/pysciidoc"]
