@@ -3,6 +3,7 @@ from typing import Iterator, Iterable
 from string import Template
 import logging
 
+
 class AsciiDocGenerator:
     def __init__(self) -> None:
         self._logger = logging.getLogger(__name__)
@@ -118,8 +119,12 @@ endif::[]
             return False
 
         def get_xref_if_possible(base_module: str, base_name: str) -> str:
-            if base_module.startswith(self.package_name) and not contains_private_namespace(f"{base_module}.{base_name}"):
-                return f"xref::{base_module}.adoc#{base_module}.{base_name}[{base_name}]"
+            if base_module.startswith(
+                self.package_name
+            ) and not contains_private_namespace(f"{base_module}.{base_name}"):
+                return (
+                    f"xref::{base_module}.adoc#{base_module}.{base_name}[{base_name}]"
+                )
             return f"{base_module}.{base_name}"
 
         if self.current_doc.kind == "class":
@@ -162,9 +167,8 @@ def generate_ascii_doc(d: ObjectDoc, package_name: str) -> Iterator[tuple[str, s
     yield d.qualified_name, generator.generate(d, package_name=package_name)
 
 
-
 def generate_module_crossrefs(
-    docs: Iterable[ObjectDoc], package_name: str, prefix: str = "api"
+    docs: Iterable[ObjectDoc], package_name: str, prefix: str = ""
 ) -> list[tuple[str, int]]:
     logger = logging.getLogger(__name__)
 
@@ -177,7 +181,7 @@ def generate_module_crossrefs(
     def collect_all_modules_from_docs(docs: Iterable[ObjectDoc]) -> Iterator[ObjectDoc]:
         for d in docs:
             yield from collect_all_modules(d)
-        
+
     tree: dict = {}
 
     def add_module_path(module_path: list[str], tree: dict) -> None:
@@ -187,23 +191,23 @@ def generate_module_crossrefs(
         tree[module_path[0]] = tree.get(module_path[0], {})
         add_module_path(module_path[1:], tree[module_path[0]])
 
-    
     for qualname in (m.qualified_name for m in docs):
         qualname = qualname.removeprefix(f"{package_name}.")
         logger.debug(f"Adding module path {qualname}")
 
         module_path = qualname.split(".")
         add_module_path(module_path, tree)
-            
-    def produce_crossrefs(tree: dict, path: list[str], level: int) -> Iterator[tuple[str, int]]:
+
+    def produce_crossrefs(
+        tree: dict, path: list[str], level: int
+    ) -> Iterator[tuple[str, int]]:
         for key in tree:
             if key == ".":
                 yield ".".join(path), level
             else:
                 yield from produce_crossrefs(tree[key], path + [key], level + 1)
 
-
     crossrefs = []
     for name, level in produce_crossrefs(tree, [], 0):
-        crossrefs.append((f"xref:api:{package_name}.{name}.adoc[{name}]", level))
+        crossrefs.append((f"xref:{prefix}:{package_name}.{name}.adoc[{name}]", level))
     return crossrefs
